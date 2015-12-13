@@ -41,29 +41,39 @@ unless mac_with_no_homebrew
   end
 end
 
-execute "Install ruby-build" do
-  cwd       src_path
-  command   %{./install.sh}
+if node['platform'] == 'mac_os_x' && node['current_user']
+  dest_dir = "#{node['etc']['passwd'][node['current_user']]['dir']}/.rbenv/plugins/ruby-build"
 
-  action    :nothing
-  not_if do
-    ::File.exists?("/usr/local/bin/ruby-build") && upgrade_strategy == "none"
+  execute "git clone https://github.com/rbenv/ruby-build.git #{dest_dir}" do
+    not_if do
+      ::File.exists?(dest_dir)
+    end
   end
-end
+else
+  execute "Install ruby-build" do
+    cwd       src_path
+    command   %{./install.sh}
 
-directory ::File.dirname(src_path) do
-  recursive true
-end
-
-git src_path do #~FC043 exception to support AWS OpsWorks using an older Chef
-  repository  git_url
-  reference   git_ref
-
-  if upgrade_strategy == "none"
-    action    :checkout
-  else
-    action    :sync
+    action    :nothing
+    not_if do
+      ::File.exists?("/usr/local/bin/ruby-build") && upgrade_strategy == "none"
+    end
   end
 
-  notifies :run, resources(:execute => "Install ruby-build"), :immediately
+  directory ::File.dirname(src_path) do
+    recursive true
+  end
+
+  git src_path do #~FC043 exception to support AWS OpsWorks using an older Chef
+    repository  git_url
+    reference   git_ref
+
+    if upgrade_strategy == "none"
+      action    :checkout
+    else
+      action    :sync
+    end
+
+    notifies :run, resources(:execute => "Install ruby-build"), :immediately
+  end
 end
