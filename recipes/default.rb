@@ -41,13 +41,20 @@ unless mac_with_no_homebrew
   end
 end
 
-if node['platform'] == 'mac_os_x' && node['current_user']
-  dest_dir = "#{node['etc']['passwd'][node['current_user']]['dir']}/.rbenv/plugins/ruby-build"
+if node['platform'] == 'mac_os_x'
+  if node['user'] && node['user']['id']
+    user_name = node['user']['id']
+    home_dir = Etc.getpwnam(user_name).dir
+  else
+    user_name = node['current_user']
+    home_dir = node['etc']['passwd'][user_name]['dir']
+  end
+
+  dest_dir = "#{home_dir}/.rbenv/plugins/ruby-build"
 
   execute "git clone https://github.com/rbenv/ruby-build.git #{dest_dir}" do
-    not_if do
-      ::File.exists?(dest_dir)
-    end
+    user user_name
+    not_if { ::File.exists?(dest_dir) }
   end
 else
   execute "Install ruby-build" do
